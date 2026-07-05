@@ -1,0 +1,17 @@
+{
+  "name": "media-server",
+  "version": "2.0.1",
+  "description": "通过 Subsonic 或 WebDAV 接入外部音乐库",
+  "private": true,
+  "scripts": {
+    "build": "songloft-plugin build",
+    "dev": "songloft-plugin dev",
+    "validate": "songloft-plugin validate",
+    "publish:release": "songloft-plugin publish"
+  },
+  "devDependencies": {
+    "@songloft/plugin-builder": "^2.4.3",
+    "@songloft/plugin-sdk": "^2.4.3",
+    "typescript": "^5.9.3"
+  }
+}

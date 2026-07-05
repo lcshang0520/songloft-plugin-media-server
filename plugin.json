@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/songloft-org/plugin-toolchain/main/schemas/plugin.schema.json",
+  "name": "媒体服务器",
+  "version": "2.0.1",
+  "description": "通过 Subsonic 或 WebDAV 接入外部音乐库，并可对外提供 Subsonic API",
+  "author": "Songloft Team",
+  "homepage": "https://github.com/lcshang0520/songloft-plugin-media-server",
+  "license": "Apache-2.0",
+  "entryPath": "media-server",
+  "main": "main.js",
+  "minHostVersion": "1.5.0",
+  "permissions": [
+    "storage",
+    "songs.read",
+    "songs.write",
+    "playlists.read",
+    "playlists.write",
+    "fs:music"
+  ],
+  "publicPaths": [
+    "/rest"
+  ],
+  "updateUrl": "https://raw.githubusercontent.com/lcshang0520/songloft-plugin-media-server/main/plugin.json",
+  "download_url": "",
+  "entryHash": "49a16dba4e59cd9554eebe0b47888f65fc96db39951a098fa1456ed7f6bc0387",
+  "zipHash": "9ab5044850caa603a26df9d00c217e0e631da7edae790911a0624d6480a47d52"
+}

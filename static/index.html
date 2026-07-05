@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>媒体服务器</title>
+    <link rel="stylesheet" href="static/css/style.css">
+
+</head>
+<body>
+    <!-- AppBar -->
+    <header class="app-bar">
+        <span class="material-symbols-outlined">library_music</span>
+        <h1>媒体服务器</h1>
+        <button class="btn-icon" id="refreshBtn" title="刷新">
+            <span class="material-symbols-outlined">refresh</span>
+        </button>
+    </header>
+
+    <!-- Tab 1: 服务器管理 -->
+    <div class="tab-content active" id="tab-servers">
+        <div class="container">
+            <!-- 已配置的服务器 -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="material-symbols-outlined">dns</span>
+                    已配置的服务器
+                </div>
+                <div class="card-body" id="serverList">
+                    <div class="empty-state">暂无服务器，请先添加</div>
+                </div>
+            </div>
+            
+            <!-- 添加服务器卡片 -->
+            <div class="card">
+                <div class="card-header">
+                    <span class="material-symbols-outlined">add_link</span>
+                    添加媒体服务器
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label class="form-label">服务器类型</label>
+                        <select class="text-field" id="serverType">
+                            <option value="subsonic">Subsonic / Navidrome</option>
+                            <option value="dav">WebDAV</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">配置名称</label>
+                        <input type="text" class="text-field" id="subName" placeholder="例如：我的音乐服务器">
+                    </div>
+                    <div class="form-group" style="margin-top:12px">
+                        <label class="form-label">服务器地址</label>
+                        <input type="text" class="text-field" id="subUrl" placeholder="例如：https://music.example.com">
+                    </div>
+                    <div class="form-group auth-field" style="margin-top:12px">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="text-field" id="subUsername" placeholder="用户名（WebDAV 可选）">
+                    </div>
+                    <div class="form-group auth-field" style="margin-top:12px">
+                        <label class="form-label">密码 / Token</label>
+                        <input type="password" class="text-field" id="subPassword" placeholder="密码 (或 Token 如果配置了 Salt)">
+                    </div>
+                    <div class="form-group subsonic-only-field" style="margin-top:12px">
+                        <label class="form-label">Salt (选填)</label>
+                        <input type="text" class="text-field" id="subSalt" placeholder="如果使用 Token 认证，填写 Salt">
+                    </div>
+                    <div class="toolbar" style="padding:16px 0 0;justify-content:flex-end;gap:8px">
+                        <button class="btn-text" id="testServerBtn">
+                            <span class="material-symbols-outlined">network_check</span>
+                            测试连接
+                        </button>
+                        <button class="btn-filled" id="addServerBtn">
+                            <span class="material-symbols-outlined">save</span>
+                            保存服务器
+                        </button>
+                    </div>
+                </div>
+            </div>            
+        </div>
+    </div>
+
+    <!-- Tab 2: 音乐库浏览 -->
+    <div class="tab-content" id="tab-browser">
+        <div class="container">
+            <!-- 服务器选择 -->
+            <div class="card browser-shell-card">
+                <div class="card-body browser-shell">
+                    <div class="browser-server-row">
+                        <!-- 使用相对定位容器包裹 select 和前缀图标 -->
+                        <div style="display:flex;align-items:center;gap:8px;flex:1;background:var(--md-surface);border-radius:8px;padding:0 12px;border:1px solid var(--md-outline);">
+                            <span class="material-symbols-outlined" style="color:var(--md-primary);font-size:24px;flex-shrink:0;">storage</span>
+                            <select id="browserServerSelect" style="flex:1;height:40px;border:none;outline:none;background:transparent;font-size:16px;color:var(--md-on-surface);">
+                                <option value="">请选择服务器...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- 发现与搜索区 -->
+                    <div id="discoveryArea" class="discovery-area">
+                        <div class="search-row" style="display:flex;align-items:stretch;gap:8px;">
+                            <input type="text" class="text-field" id="searchInput" placeholder="搜索歌手、专辑、歌曲..." style="flex:1;height:40px;box-sizing:border-box;">
+                            <button class="btn-filled" id="searchBtn" style="padding:0 16px;height:40px;box-sizing:border-box;display:flex;align-items:center;justify-content:center;flex-shrink:0;">搜索</button>
+                        </div>
+                        <!-- chips 部分保持不变 -->
+                        <div class="chips-container">
+                            <button class="chip chip-playlists subsonic-only-action" id="chipPlaylists"><span class="material-symbols-outlined" style="font-size:12px;">queue_music</span> 服务器歌单</button>
+                            <button class="chip chip-starred subsonic-only-action" id="chipStarred"><span class="material-symbols-outlined" style="font-size:12px;">favorite</span> 我的收藏</button>
+                            <button class="chip chip-random subsonic-only-action" id="chipRandom"><span class="material-symbols-outlined" style="font-size:12px;">shuffle</span> 随便听听</button>
+                        </div>
+                    </div>
+
+                    <div class="browser-content-area">
+                        <div class="browser-content-header">
+                            <button class="btn-icon" id="browserUpBtn" title="返回上一级" style="display:none;">
+                                <span class="material-symbols-outlined">arrow_upward</span>
+                            </button>
+                            <div class="browser-path" id="browserPathDisplay">Artists</div>
+                            <button class="btn-text" id="toggleSelectModeBtn" style="display:none;">
+                                <span class="material-symbols-outlined">checklist</span> 多选
+                            </button>
+                        </div>
+                        <div class="browser-list" id="browserList">
+                            <div class="empty-state">请选择服务器进行浏览</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab 3: 服务端设置 -->
+    <div class="tab-content" id="tab-server-mode">
+        <div class="container">
+            <div class="card">
+                <div class="card-header">
+                    <span class="material-symbols-outlined">cloud_upload</span>
+                    Subsonic 服务端
+                </div>
+                <div class="card-body">
+                    <p style="font-size:13px;color:var(--md-on-surface-variant);margin:0 0 16px;">
+                        开启后，第三方客户端（Symfonium、DSub 等）可通过 Subsonic 协议访问本机音乐库。
+                    </p>
+                    <div class="form-group" style="display:flex;align-items:center;justify-content:space-between;">
+                        <label class="form-label" style="margin:0;">启用服务端</label>
+                        <label class="switch">
+                            <input type="checkbox" id="serverEnabled">
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                    <div class="form-group" style="margin-top:16px">
+                        <label class="form-label">用户名</label>
+                        <input type="text" class="text-field" id="serverUsername" placeholder="admin">
+                    </div>
+                    <div class="form-group" style="margin-top:12px">
+                        <label class="form-label">密码</label>
+                        <input type="password" class="text-field" id="serverPassword" placeholder="设置连接密码">
+                    </div>
+                    <div class="toolbar" style="padding:16px 0 0;justify-content:flex-end;">
+                        <button class="btn-filled" id="saveServerModeBtn">
+                            <span class="material-symbols-outlined">save</span>
+                            保存
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="card" style="margin-top:16px">
+                <div class="card-header">
+                    <span class="material-symbols-outlined">link</span>
+                    连接信息
+                </div>
+                <div class="card-body">
+                    <p style="font-size:13px;color:var(--md-on-surface-variant);margin:0 0 8px;">
+                        在第三方客户端中填写以下地址：
+                    </p>
+                    <div style="display:flex;align-items:center;gap:8px;">
+                        <div class="text-field" id="serverUrl" style="flex:1;font-size:12px;word-break:break-all;background:var(--md-surface-container);"></div>
+                        <button class="btn-icon" id="copyUrlBtn" title="复制地址">
+                            <span class="material-symbols-outlined">content_copy</span>
+                        </button>
+                    </div>
+                    <p style="font-size:12px;color:var(--md-on-surface-variant);margin:8px 0 0;">
+                        用户名和密码使用上方配置的值。
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tab Bar -->
+    <nav class="tab-bar">
+        <button class="tab-item active" data-tab="servers">
+            <span class="material-symbols-outlined">dns</span>
+            <span>音乐源</span>
+        </button>
+        <button class="tab-item" data-tab="browser">
+            <span class="material-symbols-outlined">library_music</span>
+            <span>音乐库</span>
+        </button>
+        <button class="tab-item" data-tab="server-mode">
+            <span class="material-symbols-outlined">cloud_upload</span>
+            <span>服务端</span>
+        </button>
+    </nav>
+
+    <!-- FAB (Floating Action Bar) -->
+    <div id="fabContainer" class="fab-container">
+        <div class="fab-actions">
+            <span id="fabSelectionCount" style="font-weight:500;font-size:14px;flex:1;">已选 0 项</span>
+            <button class="btn-text" id="fabCancelBtn" style="color:var(--md-on-surface)">取消</button>
+            <button class="btn-filled" id="fabImportBtn">
+                <span class="material-symbols-outlined" style="font-size:18px;">cloud_download</span> 直接入库
+            </button>
+            <button class="btn-filled" id="fabPlaylistBtn" style="background:var(--md-secondary);color:var(--md-on-secondary)">
+                <span class="material-symbols-outlined" style="font-size:18px;">playlist_add</span> 建歌单
+            </button>
+        </div>
+    </div>
+
+    <!-- Snackbar -->
+    <div id="snackbar" class="snackbar"></div>
+
+    <!-- Edit Server Dialog -->
+    <div id="editDialog" class="dialog-overlay">
+        <div class="dialog" style="max-width: 400px;">
+            <div class="dialog-title">编辑服务器</div>
+            <div class="dialog-content">
+                <div class="form-group">
+                    <label class="form-label">服务器类型</label>
+                    <select class="text-field" id="editType">
+                        <option value="subsonic">Subsonic / Navidrome</option>
+                        <option value="dav">WebDAV</option>
+                    </select>
+                </div>
+                <div class="form-group" style="margin-top:12px">
+                    <label class="form-label">配置名称 (不可改)</label>
+                    <input type="text" class="text-field" id="editName" disabled style="opacity: 0.7; cursor: not-allowed;">
+                </div>
+                <div class="form-group" style="margin-top:12px">
+                    <label class="form-label">服务器地址</label>
+                    <input type="text" class="text-field" id="editUrl">
+                </div>
+                <div class="form-group edit-auth-field" style="margin-top:12px">
+                    <label class="form-label">用户名</label>
+                    <input type="text" class="text-field" id="editUsername">
+                </div>
+                <div class="form-group edit-auth-field" style="margin-top:12px">
+                    <label class="form-label">密码 / Token</label>
+                    <input type="password" class="text-field" id="editPassword" placeholder="留空则保持不变">
+                </div>
+                <div class="form-group edit-subsonic-only-field" style="margin-top:12px">
+                    <label class="form-label">Salt (选填)</label>
+                    <input type="text" class="text-field" id="editSalt">
+                </div>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn-text" id="cancelEditBtn">取消</button>
+                <button class="btn-filled" id="saveEditBtn">保存修改</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Progress Dialog -->
+    <div id="progressDialog" class="dialog-overlay">
+        <div class="dialog" style="max-width: 320px;text-align:center;">
+            <div class="dialog-title" id="progressTitle">正在处理</div>
+            <div class="dialog-content" style="padding:24px 0;">
+                <div class="spinner"></div>
+                <div id="progressText" style="margin-top:16px;color:var(--md-on-surface-variant);font-size:14px;">请稍候...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- New Playlist Dialog -->
+    <div id="playlistDialog" class="dialog-overlay">
+        <div class="dialog" style="max-width: 320px;">
+            <div class="dialog-title">创建新歌单</div>
+            <div class="dialog-content">
+                <div class="form-group">
+                    <label class="form-label">歌单名称</label>
+                    <input type="text" class="text-field" id="playlistName" placeholder="例如：Subsonic精选">
+                </div>
+            </div>
+            <div class="dialog-actions">
+                <button class="btn-text" id="cancelPlaylistBtn">取消</button>
+                <button class="btn-filled" id="confirmPlaylistBtn">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mini Player -->
+    <div id="miniPlayer" class="mini-player">
+        <div class="mini-player-info">
+            <div id="miniPlayerTitle" class="mini-player-title">未播放</div>
+            <div id="miniPlayerArtist" class="mini-player-artist">点击列表歌曲可试听</div>
+        </div>
+        <div class="mini-player-controls">
+            <button class="btn-icon mini-control-btn" id="miniPrevBtn" title="上一首">
+                <span class="material-symbols-outlined">skip_previous</span>
+            </button>
+            <button class="btn-icon mini-control-btn mini-play-btn" id="miniPlayPauseBtn" title="播放/暂停">
+                <span class="material-symbols-outlined">play_arrow</span>
+            </button>
+            <button class="btn-icon mini-control-btn" id="miniNextBtn" title="下一首">
+                <span class="material-symbols-outlined">skip_next</span>
+            </button>
+        </div>
+        <div class="mini-player-progress-row">
+            <span id="miniCurrentTime" class="mini-player-time">0:00</span>
+            <input id="miniProgress" class="mini-player-progress" type="range" min="0" max="1000" value="0" step="1" aria-label="播放进度">
+            <span id="miniDuration" class="mini-player-time">0:00</span>
+        </div>
+        <audio id="miniAudio" preload="none"></audio>
+        <button class="btn-icon mini-player-close" id="miniPlayerCloseBtn" title="关闭播放器">
+            <span class="material-symbols-outlined">close</span>
+        </button>
+    </div>
+
+    <script type="module" src="static/js/app.js"></script>
+</body>
+</html>
