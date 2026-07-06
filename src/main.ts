@@ -22,3 +22,4 @@ async function onHTTPRequest(req: HTTPRequest): Promise<HTTPResponse> {
 globalThis.onInit = onInit
 globalThis.onDeinit = onDeinit
 globalThis.onHTTPRequest = onHTTPRequest
+

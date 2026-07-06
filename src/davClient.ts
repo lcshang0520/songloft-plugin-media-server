@@ -180,3 +180,4 @@ export async function fetchDavFile(config: DavConfig, path: string, range = ''):
   }
   return response
 }
+

@@ -534,3 +534,4 @@ export async function handleServerRoute(req: HTTPRequest): Promise<HTTPResponse 
 
   return handler(req, query)
 }
+

@@ -207,13 +207,13 @@
     <div id="fabContainer" class="fab-container">
         <div class="fab-actions">
             <span id="fabSelectionCount" style="font-weight:500;font-size:14px;flex:1;">已选 0 项</span>
-            <button class="btn-text" id="fabCancelBtn" style="color:var(--md-on-surface)">取消</button>
             <button class="btn-filled" id="fabImportBtn">
                 <span class="material-symbols-outlined" style="font-size:18px;">cloud_download</span> 直接入库
             </button>
             <button class="btn-filled" id="fabPlaylistBtn" style="background:var(--md-secondary);color:var(--md-on-secondary)">
-                <span class="material-symbols-outlined" style="font-size:18px;">playlist_add</span> 建歌单
+                <span class="material-symbols-outlined" style="font-size:18px;">playlist_add</span> 导入歌单
             </button>
+            <button class="btn-text" id="fabCancelBtn" style="color:var(--md-on-surface)">取消</button>
         </div>
     </div>
 
@@ -271,19 +271,25 @@
         </div>
     </div>
 
-    <!-- New Playlist Dialog -->
+    <!-- Import Playlist Dialog -->
     <div id="playlistDialog" class="dialog-overlay">
-        <div class="dialog" style="max-width: 320px;">
-            <div class="dialog-title">创建新歌单</div>
+        <div class="dialog" style="max-width: 360px;">
+            <div class="dialog-title">导入歌单</div>
             <div class="dialog-content">
                 <div class="form-group">
+                    <label class="form-label">选择歌单</label>
+                    <select class="text-field" id="playlistSelect">
+                        <option value="__new__">＋ 新建歌单</option>
+                    </select>
+                </div>
+                <div class="form-group" id="newPlaylistNameGroup" style="margin-top:12px;">
                     <label class="form-label">歌单名称</label>
                     <input type="text" class="text-field" id="playlistName" placeholder="例如：Subsonic精选">
                 </div>
             </div>
             <div class="dialog-actions">
-                <button class="btn-text" id="cancelPlaylistBtn">取消</button>
                 <button class="btn-filled" id="confirmPlaylistBtn">确认</button>
+                <button class="btn-text" id="cancelPlaylistBtn">取消</button>
             </div>
         </div>
     </div>
@@ -319,3 +325,4 @@
     <script type="module" src="static/js/app.js"></script>
 </body>
 </html>
+

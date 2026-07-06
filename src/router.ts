@@ -294,12 +294,15 @@ router.get('/lists/:id/items', async (req: HTTPRequest, params) => {
       const mappedItems = await Promise.all(filteredItems.map(async item => {
         const relativePath = getDavRelativePath(config, item.filename)
         const isMusic = item.type === 'file' && isDavMusicFile(item.basename || relativePath)
+        // 构建 WebDAV 直链 URL（含认证凭据），供迷你播放器直连播放
+        const directUrl = isMusic ? buildDavStreamUrl(config, relativePath) : ''
         return {
           id: relativePath,
           name: item.basename,
           type: item.type,
           size: item.size,
           streamUrl: isMusic ? buildDavProxyStreamUrl(config.name, relativePath) : '',
+          directUrl,
           sourceType: 'dav',
           configName: config.name,
           path: relativePath,
@@ -449,7 +452,12 @@ router.post('/api/music/url', createMusicUrlHandler({
 
     if (!isSubsonic(config)) {
       const relativePath = path || directUrl || ''
-      return buildDavProxyStreamUrl(config.name, relativePath)
+      // 优先返回 WebDAV 直链（含认证凭据），备选代理 URL
+      try {
+        return buildDavStreamUrl(config, relativePath)
+      } catch {
+        return buildDavProxyStreamUrl(config.name, relativePath)
+      }
     }
     const url = getStreamUrl(config, songId)
     await assertPlayableUrl(url)
@@ -676,3 +684,4 @@ router.get('/lists/:id/lyric', async (req: HTTPRequest, params) => {
 })
 
 export default router
+

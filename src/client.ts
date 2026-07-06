@@ -232,3 +232,4 @@ export async function getLyrics(config: SubsonicConfig, artist: string, title: s
   const lyricValue = data['subsonic-response']?.lyrics?.value
   return lyricValue || ''
 }
+

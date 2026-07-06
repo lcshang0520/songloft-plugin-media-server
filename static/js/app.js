@@ -543,8 +543,16 @@ function setMiniSource(item, playUrl) {
     audio.play().then(updateMiniPlayButton).catch(updateMiniPlayButton)
 }
 
+function getBestPlayUrl(item) {
+    // WebDAV 源优先使用直链 URL（含认证凭据），备选代理 URL
+    if ((item.sourceType || 'subsonic') === 'dav' && item.directUrl) {
+        return item.directUrl
+    }
+    return item.streamUrl || item.url || ''
+}
+
 function playMini(item, queueItems = currentListItems) {
-    const playUrl = item.streamUrl || item.url
+    const playUrl = getBestPlayUrl(item)
     if (!playUrl) {
         showSnackbar('该歌曲没有可播放地址')
         return
@@ -561,7 +569,7 @@ function playMiniAtIndex(index) {
     if (index < 0 || index >= miniQueue.length) return false
     miniQueueIndex = index
     const item = miniQueue[miniQueueIndex]
-    const playUrl = item.streamUrl || item.url
+    const playUrl = getBestPlayUrl(item)
     if (!playUrl) return playMiniAtIndex(index + 1)
     miniHandlingError = false
     setMiniSource(item, playUrl)
@@ -599,6 +607,48 @@ function toggleMiniPlayPause() {
 }
 
 async function tryMiniFallback(item) {
+    // WebDAV 源：如果直链播放失败，尝试代理 URL
+    if ((item.sourceType || 'subsonic') === 'dav') {
+        const key = `dav:${item.configName || ''}:${item.id || item.path}`
+        // 如果当前用的是直链，尝试代理 URL
+        if (item.directUrl && item.streamUrl && item.directUrl !== item.streamUrl) {
+            if (!miniFallbackTried.has(key + ':proxy')) {
+                miniFallbackTried.add(key + ':proxy')
+                showSnackbar('直链播放失败，尝试代理模式...')
+                setMiniSource(item, item.streamUrl)
+                return true
+            }
+        }
+        // 尝试通过 /api/music/url 重新获取播放链接
+        if (!miniFallbackTried.has(key + ':resolve')) {
+            miniFallbackTried.add(key + ':resolve')
+            try {
+                const res = await fetch('./api/music/url', {
+                    method: 'POST',
+                    headers: getAuthHeaders(),
+                    body: JSON.stringify({
+                        source_data: JSON.stringify({
+                            configName: item.configName,
+                            path: item.id || item.path,
+                            type: 'dav'
+                        })
+                    })
+                })
+                if (res.ok) {
+                    const data = await res.json()
+                    if (data.url) {
+                        item.streamUrl = data.url
+                        item.url = data.url
+                        showSnackbar('已重新获取 WebDAV 播放地址')
+                        setMiniSource(item, data.url)
+                        return true
+                    }
+                }
+            } catch {}
+        }
+        return false
+    }
+
     // Subsonic 源：搜索其他服务器
     if (item.sourceType === 'subsonic') {
         const key = `${item.configName || ''}:${item.songId || item.id}`
@@ -634,39 +684,6 @@ async function tryMiniFallback(item) {
             }
             showSnackbar('当前音源播放失败，已切换到其他远程音源')
             setMiniSource(item, data.data.url)
-            return true
-        } catch {
-            return false
-        }
-    }
-
-    // WebDAV 源：尝试重新构建直连 URL（处理认证失效等情况）
-    if (item.sourceType === 'dav') {
-        const key = `dav:${item.configName || ''}:${item.id || item.path}`
-        if (miniFallbackTried.has(key)) return false
-        miniFallbackTried.add(key)
-
-        try {
-            // 通过 /api/music/url 接口重新获取播放链接
-            const res = await fetch('./api/music/url', {
-                method: 'POST',
-                headers: getAuthHeaders(),
-                body: JSON.stringify({
-                    source_data: JSON.stringify({
-                        configName: item.configName,
-                        path: item.id || item.path,
-                        type: 'dav'
-                    })
-                })
-            })
-            if (!res.ok) return false
-            const data = await res.json()
-            if (!data.url) return false
-
-            item.streamUrl = data.url
-            item.url = data.url
-            showSnackbar('已重新获取 WebDAV 播放地址')
-            setMiniSource(item, data.url)
             return true
         } catch {
             return false
@@ -726,6 +743,31 @@ async function createSongloftPlaylist(name, items, description) {
         if (!addRes.ok) throw new Error('添加歌曲到歌单失败')
     }
     return songIds.length
+}
+
+async function loadSongloftPlaylistsForDialog() {
+    const selectEl = document.getElementById('playlistSelect')
+    // 保留第一项“＋ 新建歌单”
+    selectEl.innerHTML = '<option value="__new__">＋ 新建歌单</option>'
+    try {
+        const res = await fetch(window.location.origin + '/api/v1/playlists', { headers: getAuthHeaders() })
+        if (res.ok) {
+            const playlists = await res.json()
+            const list = Array.isArray(playlists) ? playlists : (playlists.playlists || playlists.data || [])
+            list.forEach(p => {
+                const opt = document.createElement('option')
+                opt.value = p.id
+                const songCount = p.song_count ?? p.songCount ?? 0
+                opt.textContent = `${p.name}（${songCount}首）`
+                selectEl.appendChild(opt)
+            })
+        }
+    } catch (e) {
+        console.warn('加载歌单列表失败:', e)
+    }
+    // 默认选中新建
+    selectEl.value = '__new__'
+    document.getElementById('newPlaylistNameGroup').style.display = ''
 }
 
 async function importServerPlaylistToSongloft(playlist) {
@@ -891,29 +933,66 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
 
-    document.getElementById('fabPlaylistBtn').onclick = () => {
+    document.getElementById('fabPlaylistBtn').onclick = async () => {
         if (selectedItems.size === 0) return
         document.getElementById('playlistName').value = ''
+        // 加载已有歌单列表
+        await loadSongloftPlaylistsForDialog()
         document.getElementById('playlistDialog').classList.add('show')
     }
     document.getElementById('cancelPlaylistBtn').onclick = () => {
         document.getElementById('playlistDialog').classList.remove('show')
     }
+    // 歌单选择器切换时显示/隐藏名称输入框
+    document.getElementById('playlistSelect').onchange = () => {
+        const isNew = document.getElementById('playlistSelect').value === '__new__'
+        document.getElementById('newPlaylistNameGroup').style.display = isNew ? '' : 'none'
+    }
     
     document.getElementById('confirmPlaylistBtn').onclick = async () => {
-        const name = document.getElementById('playlistName').value.trim()
-        if (!name) { showSnackbar('请输入歌单名称'); return }
-        document.getElementById('playlistDialog').classList.remove('show')
+        const selectEl = document.getElementById('playlistSelect')
+        const selectedValue = selectEl.value
+        const isNew = selectedValue === '__new__'
         
-        showProgress(true, '创建歌单', `正在导入歌曲并创建歌单...`)
-        try {
-            const count = await createSongloftPlaylist(name, Array.from(selectedItems.values()), 'Imported from media server')
-            showProgress(false)
-            showSnackbar(`成功创建歌单并导入 ${count} 首歌曲`)
-            toggleSelectMode()
-        } catch (e) {
-            showProgress(false)
-            showSnackbar('操作失败: ' + e.message)
+        if (isNew) {
+            // 新建歌单
+            const name = document.getElementById('playlistName').value.trim()
+            if (!name) { showSnackbar('请输入歌单名称'); return }
+            document.getElementById('playlistDialog').classList.remove('show')
+            showProgress(true, '创建歌单', `正在导入歌曲并创建歌单...`)
+            try {
+                const count = await createSongloftPlaylist(name, Array.from(selectedItems.values()), 'Imported from media server')
+                showProgress(false)
+                showSnackbar(`成功创建歌单并导入 ${count} 首歌曲`)
+                toggleSelectMode()
+            } catch (e) {
+                showProgress(false)
+                showSnackbar('操作失败: ' + e.message)
+            }
+        } else {
+            // 追加到已有歌单
+            const playlistId = selectedValue
+            const playlistName = selectEl.options[selectEl.selectedIndex].textContent
+            document.getElementById('playlistDialog').classList.remove('show')
+            showProgress(true, '导入歌单', `正在将歌曲追加到「${playlistName}」...`)
+            try {
+                const songs = await submitImport(Array.from(selectedItems.values()))
+                const songIds = songs.map(s => s.id)
+                if (songIds.length > 0) {
+                    const addRes = await fetch(window.location.origin + `/api/v1/playlists/${playlistId}/songs`, {
+                        method: 'POST',
+                        headers: getAuthHeaders(),
+                        body: JSON.stringify({ song_ids: songIds })
+                    })
+                    if (!addRes.ok) throw new Error('添加歌曲到歌单失败')
+                }
+                showProgress(false)
+                showSnackbar(`成功追加 ${songIds.length} 首歌曲到「${playlistName}」`)
+                toggleSelectMode()
+            } catch (e) {
+                showProgress(false)
+                showSnackbar('操作失败: ' + e.message)
+            }
         }
     }
 
@@ -972,3 +1051,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
     fetchServers()
 })
+

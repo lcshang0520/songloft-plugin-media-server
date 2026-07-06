@@ -61,3 +61,4 @@ export async function getConfig(name: string): Promise<MediaServerConfig | undef
   const configs = await getConfigs()
   return configs.find(c => c.name === name)
 }
+
